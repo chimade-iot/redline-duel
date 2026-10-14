@@ -1,0 +1,407 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redline Duel AI</title>
+<meta name="description" content="Negotiate six contract clauses in your own words against an AI opposing counsel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f3ec; --card:#fffdf8; --ink:#1f1d1a; --muted:#6b665d; --line:#e2dccf;
+  --del:#b3261e; --del-bg:#fbe9e7; --ins:#1b5fae; --ins-bg:#e7f0fb;
+  --good:#2e7d4f; --warn:#a86a00; --bad:#b3261e; --chip:#efe9dc; --bubble:#f1ece1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#161513; --card:#1f1e1b; --ink:#ece8df; --muted:#a39d91; --line:#34312c;
+    --del:#f08a80; --del-bg:#3a1f1c; --ins:#8cb8f2; --ins-bg:#1c2a3d;
+    --good:#7fcf9c; --warn:#e6b35a; --bad:#f08a80; --chip:#2a2824; --bubble:#2a2824;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#161513; --card:#1f1e1b; --ink:#ece8df; --muted:#a39d91; --line:#34312c;
+  --del:#f08a80; --del-bg:#3a1f1c; --ins:#8cb8f2; --ins-bg:#1c2a3d;
+  --good:#7fcf9c; --warn:#e6b35a; --bad:#f08a80; --chip:#2a2824; --bubble:#2a2824;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.55}
+.wrap{max-width:680px;margin:0 auto;padding:16px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-family:"Source Serif 4",serif;font-weight:500;font-size:24px;margin:0;letter-spacing:-.01em}
+.brand h1 span{color:var(--del);text-decoration:line-through;text-decoration-thickness:2px}
+.brand small{color:var(--muted);font-size:13px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;background:none;border:0;padding:4px;font-family:inherit}
+.sw{width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--card);transition:left .15s}
+.toggle[aria-pressed="true"] .sw{background:var(--ink)}
+.toggle[aria-pressed="true"] .sw::after{left:17px}
+.meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.m .l{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .v{font-size:17px;font-weight:500}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;transition:width .4s,background .4s}
+.m .s{font-size:12px;margin-top:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.card.table{border-color:var(--ink)}
+.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.02em;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.clause{font-family:"Source Serif 4",serif;font-size:16.5px;line-height:1.7;margin:0}
+h2{font-family:"Source Serif 4",serif;font-weight:500;font-size:20px;margin:0 0 4px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.opts{display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;color:var(--ink);font-family:inherit;font-size:14px;transition:border-color .15s}
+.opt:hover{border-color:var(--muted)}
+.opt b{font-weight:500;display:block}
+.opt .d{font-size:13px;color:var(--muted)}
+.thread{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.who{display:flex;gap:10px;align-items:flex-start}
+.who.me{flex-direction:row-reverse}
+.av{width:36px;height:36px;flex-shrink:0;border-radius:50%;background:var(--del-bg);color:var(--del);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:13px}
+.av.you{background:var(--ins-bg);color:var(--ins)}
+.bubble{background:var(--bubble);border-radius:12px;padding:10px 12px;min-width:0;max-width:85%;white-space:pre-wrap;overflow-wrap:anywhere}
+.who.me .bubble{background:var(--ins-bg)}
+.bubble .n{font-size:12px;color:var(--muted);margin-bottom:3px;white-space:normal}
+.typing{color:var(--muted);font-style:italic}
+.hint{border:1px dashed var(--line);border-radius:10px;padding:8px 12px;font-size:14px;color:var(--muted);margin-bottom:12px;font-style:italic}
+textarea{width:100%;min-height:96px;resize:vertical;border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-family:inherit;font-size:15px;line-height:1.5;background:var(--card);color:var(--ink)}
+textarea:focus{outline:none;border-color:var(--ink)}
+.composer-foot{display:flex;justify-content:space-between;align-items:center;gap:10px;margin:6px 0 12px;font-size:13px}
+.err{color:var(--bad);font-size:13px;min-height:18px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--ink);color:var(--paper);border:0;border-radius:10px;padding:10px 18px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.btn[aria-busy="true"]{opacity:.6;cursor:wait}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.walk{background:none;border:0;color:var(--muted);font-family:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:6px 0;margin-top:8px}
+.pill{font-size:12px;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.lo{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.mid{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.hi{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.verdict{font-size:11px;padding:1px 7px;border-radius:8px;margin-left:6px;background:var(--chip);color:var(--muted)}
+.score{font-family:"Source Serif 4",serif;font-size:56px;font-weight:500;line-height:1;margin:6px 0}
+details{border-top:1px solid var(--line);padding:10px 0}
+details summary{cursor:pointer;font-weight:500;font-size:15px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+details summary::-webkit-details-marker{display:none}
+details .clause{font-size:15px;margin:8px 0}
+.lesson{font-size:14px;color:var(--muted);margin:0}
+.toast{font-size:13px;color:var(--good)}
+.fade{animation:f .25s ease}
+@keyframes f{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+a{color:var(--ins)}
+@media (max-width:520px){
+  .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brand small{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1><span>Redline</span> Duel</h1><small>AI edition</small></div>
+    <button class="toggle" id="hintToggle" aria-pressed="false" title="Show a hint on each clause"><span>Hint</span><span class="sw" aria-hidden="true"></span></button>
+  </header>
+  <div id="meters"></div>
+  <main id="app"></main>
+</div>
+
+<script>
+// ---- Settings -------------------------------------------------------------
+// Paste your Cloudflare Worker URL here, e.g. "https://redline-duel.yourname.workers.dev"
+const WORKER_URL = "https://redline-duel.chimade-iot.workers.dev";
+// Where the scripted (no-AI) version lives, shown when the daily AI allowance is used up.
+const CLASSIC_URL = "redline-duel.html";
+const EXCHANGES_PER_CLAUSE = 3;
+// ---------------------------------------------------------------------------
+
+const COUNSEL = "Victoria Kane";
+const CLAUSES = [
+  {id:"liability", title:"Liability cap", ref:"9.1 Limitation of liability", origRisk:9,
+   original:`Each party's total aggregate liability arising out of or in connection with this Agreement shall not exceed the fees paid by Customer in the three (3) months preceding the event giving rise to the claim.`,
+   hint:`A vendor's appetite for liability rarely exceeds what someone else will pay for it.`,
+   placeholder:`e.g. "Three months' fees is well below market. I propose twelve months, with confidentiality and data breaches outside the cap, because…"`,
+   lesson:`Market practice in SaaS is around twelve months' fees, with carve-outs or a super-cap for data and confidentiality. A super-cap that tracks the vendor's insurance is far easier to win than "uncapped".`},
+  {id:"indemnity", title:"Indemnification", ref:"10.1 Indemnities", origRisk:9,
+   original:`Customer shall indemnify, defend and hold harmless Supplier and its affiliates from and against any and all claims, losses and expenses arising out of or relating to Customer's use of the Services.`,
+   hint:`Not every exclusion is worth fighting over. Some of them are simply fair.`,
+   placeholder:`Propose your redline and explain why it's fair to both sides…`,
+   lesson:`Mutual indemnities and a vendor IP-infringement indemnity are standard. Exclusions for your own data and modifications are reasonable, and spending capital fighting them buys very little.`},
+  {id:"termination", title:"Termination", ref:"14.2 Termination", origRisk:8,
+   original:`Supplier may terminate this Agreement for convenience on thirty (30) days' written notice. Customer may terminate this Agreement only for Supplier's material breach that remains uncured for sixty (60) days after notice.`,
+   hint:`Think about what an early exit would cost her, and what it would cost you to leave.`,
+   placeholder:`What do you need if either side wants out?`,
+   lesson:`A vendor's right to terminate for convenience guts your continuity. Transition assistance is often cheaper for the vendor to give than a longer notice period, and it is worth more to you.`},
+  {id:"renewal", title:"Renewal", ref:"2.2 Renewal", origRisk:8,
+   original:`This Agreement shall automatically renew for successive three (3) year terms unless either party gives notice of non-renewal at least one hundred and eighty (180) days before expiry. Fees for each renewal term shall be at Supplier's then-current list price.`,
+   hint:`The cheapest protection here might be something that simply reminds you.`,
+   placeholder:`How should renewal and renewal pricing work?`,
+   lesson:`Auto-renewal traps are about the notice window and the price. A renewal-reminder obligation costs the vendor almost nothing and protects you a great deal.`},
+  {id:"suspension", title:"Suspension", ref:"6.4 Suspension for government action", origRisk:9,
+   original:`Supplier may suspend the Services, in whole or in part, immediately and without liability if any law, regulation, sanction, export control or order of any governmental authority restricts or, in Supplier's reasonable opinion, may restrict the provision of the Services.`,
+   hint:`No contract overrides a regulator. But a contract can decide who pays when one acts.`,
+   placeholder:`If a regulator forces a shutdown, who should bear the consequences?`,
+   lesson:`You can't contract around a regulator, but you can allocate the consequences: an objective trigger, notice, limits on scope, fee abatement, and an exit if the suspension drags on.`},
+  {id:"volume", title:"Volume commitment", ref:"5.1 Committed spend", origRisk:8, origSpend:1500000,
+   original:`Customer commits to a minimum annual spend of $1,500,000 (the "Committed Spend"). Any shortfall against the Committed Spend shall be invoiced at the end of each contract year and is non-refundable.`,
+   hint:`Clauses don't live alone. Something you agreed earlier may make this one easier.`,
+   placeholder:`What commitment can Halcyon live with, and on what terms?`,
+   lesson:`A commitment should flex when the vendor can't deliver. Linking the volume commitment to suspension events is a classic cross-clause trade.`}
+];
+
+let S;
+function newClauseState(c){ return {level:0, text:c.original, risk:c.origRisk, spend:c.origSpend, history:[], used:0, final:false, busy:false, error:""}; }
+function reset(){
+  const hints = S ? S.hints : false;
+  S = {stage:"intro", i:0, patience:100, chips:0, spend:1500000, results:[], cs:newClauseState(CLAUSES[0]), hints, outage:null};
+}
+reset();
+try{ S.hints = localStorage.getItem("rd-hints")==="1"; }catch(e){}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[ch]));
+const fmt = n => "$" + (n>=1e6 ? (Math.round(n/1e5)/10)+"M" : Math.round(n/1e3)+"K");
+const riskClass = r => r<=3 ? "lo" : r<=5 ? "mid" : "hi";
+const riskWord = r => r<=3 ? "Low" : r<=5 ? "Moderate" : "High";
+const VERDICT = {strong:"Strong point", fair:"Fair point", weak:"Didn't land", bad_faith:"Out of bounds", favour:"Favour called in"};
+
+function currentRisk(){
+  const all = S.results.map(r=>r.risk);
+  if(S.stage!=="intro" && S.stage!=="end" && S.results.length===S.i) all.push(S.cs.risk);
+  CLAUSES.slice(all.length).forEach(c=>all.push(c.origRisk));
+  return all.reduce((a,b)=>a+b,0)/all.length;
+}
+
+function meters(){
+  if(S.stage==="intro"){ $("meters").innerHTML=""; return; }
+  const risk = currentRisk();
+  const rCol = risk<=3?"var(--good)":risk<=5.5?"var(--warn)":"var(--bad)";
+  const p = Math.max(0,S.patience);
+  const pCol = p>=60?"var(--good)":p>=40?"var(--warn)":"var(--bad)";
+  const pWord = p>=75?"Calm":p>=50?"Guarded":p>=25?"Irritated":"About to walk";
+  $("meters").innerHTML = `
+  <div class="meters">
+    <div class="m"><div class="l">Clause</div><div class="v">${Math.min(S.i+1,6)} of 6</div><div class="s muted">${S.results.length} closed</div></div>
+    <div class="m"><div class="l">Your risk</div><div class="bar"><i style="width:${Math.round(risk*10)}%;background:${rCol}"></i></div><div class="s" style="color:${rCol}">${riskWord(risk)}</div></div>
+    <div class="m"><div class="l">Her patience</div><div class="bar"><i style="width:${p}%;background:${pCol}"></i></div><div class="s" style="color:${pCol}">${pWord}</div></div>
+    <div class="m"><div class="l">Goodwill banked</div><div class="v">${S.chips}</div><div class="s muted">Commit ${fmt(S.spend)}</div></div>
+  </div>`;
+}
+
+function bubble(who, text, verdict, still){
+  const f = still ? "" : " fade";
+  if(who==="kane") return `<div class="who${f}"><div class="av">VK</div><div class="bubble"><div class="n">${COUNSEL}${verdict?`<span class="verdict">${VERDICT[verdict]||""}</span>`:""}</div>${esc(text)}</div></div>`;
+  return `<div class="who me${f}"><div class="av you">You</div><div class="bubble"><div class="n">You</div>${esc(text)}</div></div>`;
+}
+
+function render(){
+  meters();
+  const app = $("app");
+  if(S.stage==="intro") return renderIntro(app);
+  if(S.stage==="clause") return renderClause(app);
+  if(S.stage==="result") return renderResult(app);
+  if(S.stage==="walkout"||S.stage==="walked") return renderWalk(app);
+  if(S.stage==="end") return renderEnd(app);
+}
+
+function renderIntro(app){
+  app.innerHTML = `
+  <div class="card fade">
+    <h2>The brief</h2>
+    <p>You are counsel for <b>Halcyon Logistics</b>, which is buying an AI route-optimisation platform from <b>Northwind Cloud</b>. The deal is worth about $1.5M a year.</p>
+    <p>Across the table sits <b>${COUNSEL}</b>, Northwind's general counsel, played by an AI. She's sharp, fair when treated fairly, and short of patience with posturing.</p>
+    <p>For each of six clauses, write your redline and your argument in your own words. You get ${EXCHANGES_PER_CLAUSE} exchanges per clause. Specific, commercially reasoned proposals move her; vague or extreme ones cost you her patience.</p>
+    <p>At any point you can accept what's on the table, or concede the point to bank goodwill, which you can call in later to make her move.</p>
+    <p class="muted" style="font-size:14px">If her patience runs out, she walks away and the deal dies.</p>
+    <div class="row"><button class="btn" id="start">Open the draft</button></div>
+  </div>`;
+  $("start").onclick = ()=>{ S.stage="clause"; render(); };
+}
+
+function renderClause(app){
+  const c = CLAUSES[S.i], cs = S.cs;
+  const left = EXCHANGES_PER_CLAUSE - cs.used;
+  const closed = left<=0 || cs.final;
+  if(S.outage){ return renderOutage(app); }
+  app.innerHTML = `
+  <div class="card">
+    <div class="eyebrow"><span>${c.ref}</span><span>Northwind draft</span></div>
+    <p class="clause">${c.original}</p>
+  </div>
+  ${S.hints?`<div class="hint">${c.hint}</div>`:""}
+  <div class="thread" id="thread">
+    ${cs.history.map((h,k)=>bubble(h.who,h.text,h.verdict,k<cs.history.length-1)).join("")}
+    ${cs.busy?`<div class="who fade"><div class="av">VK</div><div class="bubble typing">Kane is reading your markup…</div></div>`:""}
+  </div>
+  <div class="card table">
+    <div class="eyebrow"><span>On the table${cs.level===0?" (her draft)":""}</span><span class="pill ${riskClass(cs.risk)}">${riskWord(cs.risk)} risk</span></div>
+    <p class="clause">${esc(cs.level===0?c.original:cs.text)}</p>
+  </div>
+  ${closed ? `<p class="muted" style="font-size:14px">${cs.final?"That's her final position on this clause.":"You've used your exchanges on this clause."} Accept it, or concede and bank goodwill.</p>` : `
+  <label for="msg" class="muted" style="font-size:14px;display:block;margin-bottom:6px">${cs.used===0?"Your redline and argument":"Your reply"}</label>
+  <textarea id="msg" maxlength="600" placeholder="${esc(c.placeholder)}" ${cs.busy?"disabled":""}></textarea>
+  <div class="composer-foot"><span class="err" id="err">${esc(cs.error)}</span><span class="muted">${left} exchange${left===1?"":"s"} left</span></div>
+  <div class="row" style="margin:0 0 14px"><button class="btn" id="send" ${cs.busy?'aria-busy="true"':""}>Send to Kane</button></div>`}
+  <div class="opts">
+    <button class="opt" id="acc"><b>Accept what's on the table</b><span class="d">Close this clause now.</span></button>
+    <button class="opt" id="con"><b>Concede the point</b><span class="d">Take her original draft and bank goodwill.</span></button>
+    ${S.chips>0 && cs.level<3 && !cs.busy ? `<button class="opt" id="fav"><b>Call in a favour (${S.chips})</b><span class="d">Spend goodwill to make her move one step.</span></button>`:""}
+  </div>
+  <button class="walk" id="walk">Walk away from the deal</button>`;
+  const msg = $("msg");
+  if(msg){
+    msg.oninput = ()=>{ if(cs.error){ cs.error=""; $("err").textContent=""; } };
+    msg.onkeydown = e=>{ if(e.key==="Enter" && (e.metaKey||e.ctrlKey)) send(false); };
+    $("send").onclick = ()=>send(false);
+    if(!cs.busy) msg.focus({preventScroll:true});
+  }
+  $("acc").onclick = ()=>{ if(!cs.busy) close("Accepted", cs.text, cs.risk, cs.spend, +5, "Agreed. Next clause."); };
+  $("con").onclick = ()=>{ if(!cs.busy){ S.chips++; close("Conceded, goodwill banked", c.original, c.origRisk, c.origSpend, +15, "That's gracious. I'll remember it."); } };
+  if($("fav")) $("fav").onclick = ()=>send(true);
+  $("walk").onclick = ()=>{ if(!cs.busy && confirm("Walk away from the whole deal?")){ S.stage="walked"; render(); } };
+}
+
+async function send(favour){
+  const c = CLAUSES[S.i], cs = S.cs;
+  if(cs.busy) return;
+  const text = favour ? "" : ($("msg") ? $("msg").value.trim() : "");
+  if(!favour && !text){ cs.error="Write your proposal first."; $("err").textContent=cs.error; $("msg").focus(); return; }
+  if(!favour && text.length<15){ cs.error="Say a little more: what do you want, and why?"; $("err").textContent=cs.error; return; }
+  const priorHistory = cs.history.map(h=>({who:h.who, text:h.text}));
+  cs.history.push({who:"you", text: favour ? "I'd like to call in the goodwill I banked earlier." : text});
+  cs.busy = true; cs.error=""; render();
+  try{
+    const res = await fetch(WORKER_URL, {method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({clause:c.id, level:cs.level, patience:S.patience, history:priorHistory, message:text, favour})});
+    const data = await res.json().catch(()=>({error:"upstream"}));
+    if(!res.ok || data.error) throw new Error(data.error || "upstream");
+    if(favour) S.chips--; else cs.used++;
+    cs.history.push({who:"kane", text:data.reply, verdict:data.verdict});
+    cs.level = data.level; cs.text = data.text; cs.risk = data.risk;
+    if(data.spend!==undefined) cs.spend = data.spend;
+    cs.final = !!data.final;
+    S.patience = Math.min(100, S.patience + (data.patienceChange||0));
+    cs.busy = false;
+    if(S.patience<=0){ S.stage="walkout"; }
+    render();
+  }catch(err){
+    cs.busy = false;
+    cs.history.pop();
+    const code = err.message;
+    if(code==="quota" || code==="not_configured" || code==="forbidden"){ S.outage = code; }
+    else if(code==="slow_down"){ cs.error = "Too fast. Give it a few seconds and try again."; }
+    else { cs.error = "Couldn't reach Kane. Check your connection and try again."; }
+    render();
+    if($("msg") && text) $("msg").value = text;
+  }
+}
+
+function renderOutage(app){
+  const msgs = {
+    quota: `The free AI allowance for today has been used up. It resets at midnight UTC (5:30 am IST).`,
+    not_configured: `The game's AI connection isn't set up yet.`,
+    forbidden: `This page isn't on the AI connection's allowed list.`
+  };
+  app.innerHTML = `
+  <div class="card fade">
+    <h2>Kane is out of the office</h2>
+    <p>${msgs[S.outage]||msgs.quota}</p>
+    <p>You can play the classic version in the meantime, with the same clauses and scripted replies.</p>
+    <div class="row"><a class="btn" href="${CLASSIC_URL}" style="text-decoration:none">Play the classic version</a><button class="btn ghost" id="retry">Try again</button></div>
+  </div>`;
+  $("retry").onclick = ()=>{ S.outage=null; render(); };
+}
+
+function close(how, text, risk, spend, patienceDelta, reply){
+  const cs = S.cs;
+  S.patience = Math.min(100, S.patience + patienceDelta);
+  if(spend!==undefined) S.spend = spend;
+  S.results.push({how, text, risk, exchanges: cs.history});
+  S.lastReply = reply;
+  S.stage = "result"; render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function renderResult(app){
+  const c = CLAUSES[S.i], r = S.results[S.i];
+  const last = S.i===CLAUSES.length-1;
+  app.innerHTML = `
+  ${bubble("kane", S.lastReply)}
+  <div class="card fade" style="margin-top:12px">
+    <div class="eyebrow"><span>${c.ref}, agreed wording</span><span class="pill ${riskClass(r.risk)}">${riskWord(r.risk)} risk</span></div>
+    <p class="clause">${esc(r.text)}</p>
+  </div>
+  <div class="row"><button class="btn" id="next">${last?"Sign and see your debrief":"Next clause"}</button></div>`;
+  $("next").onclick = ()=>{
+    if(last){ S.stage="end"; }
+    else { S.i++; S.cs = newClauseState(CLAUSES[S.i]); S.stage="clause"; }
+    render(); window.scrollTo({top:0,behavior:"smooth"});
+  };
+}
+
+function renderWalk(app){
+  const theyWalked = S.stage==="walkout";
+  app.innerHTML = `
+  <div class="card fade">
+    <h2>${theyWalked?"She walked out":"You walked away"}</h2>
+    ${theyWalked ? bubble("kane","I've been patient, but I can't spend my week defending basic commercial terms. We'll pass on this one.") : ""}
+    <p style="margin-top:10px">${theyWalked
+      ? `Her patience ran out on <b>${CLAUSES[S.i].title.toLowerCase()}</b>. Extreme anchors, vague asks and arguing over market-standard points all cost goodwill, and a deal with perfect terms is worth nothing if it never gets signed.`
+      : `You walked away from a $1.5M deal. Walking is right only when your best alternative (your BATNA) beats what's on the table. Did yours?`}</p>
+    <p class="muted" style="font-size:14px">Try specific proposals with a commercial reason behind them, and concede small points to bank goodwill for the ones that matter.</p>
+    <div class="row"><button class="btn" id="again">Try again</button></div>
+  </div>`;
+  $("again").onclick = ()=>{ reset(); syncToggle(); render(); };
+}
+
+function renderEnd(app){
+  const total = S.results.reduce((a,r)=>a+r.risk,0);
+  const protection = Math.max(0,Math.min(100,Math.round((60-total)/48*100)));
+  const rel = Math.max(0,Math.min(100,S.patience));
+  const score = Math.round(protection*0.8 + rel*0.2);
+  const grade = score>=80?"Rainmaker":score>=65?"Seasoned dealmaker":score>=45?"Solid hand":"Signed under pressure";
+  const share = `I scored ${score}/100 ("${grade}") in Redline Duel, negotiating six clauses against AI opposing counsel ${COUNSEL}. Can you beat it?`;
+  app.innerHTML = `
+  <div class="card fade" style="text-align:center">
+    <div class="muted" style="font-size:13px">Deal signed</div>
+    <div class="score">${score}</div>
+    <div style="font-weight:500">${grade}</div>
+    <p class="muted" style="font-size:14px;margin-top:8px">Protection ${protection} &middot; Relationship ${rel} &middot; Committed spend ${fmt(S.spend)}</p>
+    <div class="row" style="justify-content:center">
+      <button class="btn ghost" id="copy">Copy score to share</button>
+      <button class="btn" id="again">Play again</button>
+    </div>
+    <div class="toast" id="copied"></div>
+  </div>
+  <div class="card fade">
+    <h2 style="margin-bottom:6px">Debrief</h2>
+    ${S.results.map((r,k)=>`
+    <details>
+      <summary><span>${CLAUSES[k].title}</span><span class="pill ${riskClass(r.risk)}">${riskWord(r.risk)}</span></summary>
+      <div class="muted" style="font-size:13px;margin-top:6px">${r.how}${r.exchanges.length?` after ${r.exchanges.filter(h=>h.who==="you").length} exchange(s)`:""}</div>
+      <p class="clause">${esc(r.text)}</p>
+      <p class="lesson">${CLAUSES[k].lesson}</p>
+    </details>`).join("")}
+  </div>`;
+  $("again").onclick = ()=>{ reset(); syncToggle(); render(); window.scrollTo({top:0}); };
+  $("copy").onclick = ()=>{
+    const done = ()=>{ $("copied").textContent="Copied"; };
+    if(navigator.clipboard) navigator.clipboard.writeText(share).then(done,()=>prompt("Copy this:",share));
+    else prompt("Copy this:",share);
+  };
+}
+
+function syncToggle(){ $("hintToggle").setAttribute("aria-pressed", S.hints?"true":"false"); }
+$("hintToggle").onclick = ()=>{
+  S.hints = !S.hints; syncToggle();
+  try{ localStorage.setItem("rd-hints", S.hints?"1":"0"); }catch(e){}
+  const keep = $("msg") ? $("msg").value : null;
+  render();
+  if(keep!==null && $("msg")) $("msg").value = keep;
+};
+syncToggle();
+render();
+</script>
+</body>
+</html>

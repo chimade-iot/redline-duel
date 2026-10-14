@@ -1,0 +1,490 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Redline Duel</title>
+<meta name="description" content="A contract negotiation game for lawyers and contract professionals. Redline six clauses against a sharp opposing counsel.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500&family=Source+Serif+4:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f6f3ec; --card:#fffdf8; --ink:#1f1d1a; --muted:#6b665d; --line:#e2dccf;
+  --del:#b3261e; --del-bg:#fbe9e7; --ins:#1b5fae; --ins-bg:#e7f0fb;
+  --good:#2e7d4f; --warn:#a86a00; --bad:#b3261e; --accent:#1f1d1a; --chip:#efe9dc;
+  --bubble:#f1ece1;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#161513; --card:#1f1e1b; --ink:#ece8df; --muted:#a39d91; --line:#34312c;
+    --del:#f08a80; --del-bg:#3a1f1c; --ins:#8cb8f2; --ins-bg:#1c2a3d;
+    --good:#7fcf9c; --warn:#e6b35a; --bad:#f08a80; --accent:#ece8df; --chip:#2a2824; --bubble:#2a2824;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#161513; --card:#1f1e1b; --ink:#ece8df; --muted:#a39d91; --line:#34312c;
+  --del:#f08a80; --del-bg:#3a1f1c; --ins:#8cb8f2; --ins-bg:#1c2a3d;
+  --good:#7fcf9c; --warn:#e6b35a; --bad:#f08a80; --accent:#ece8df; --chip:#2a2824; --bubble:#2a2824;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font-family:"IBM Plex Sans",system-ui,sans-serif;font-size:16px;line-height:1.55}
+.wrap{max-width:680px;margin:0 auto;padding:16px 16px 48px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-family:"Source Serif 4",serif;font-weight:500;font-size:24px;margin:0;letter-spacing:-.01em}
+.brand h1 span{color:var(--del);text-decoration:line-through;text-decoration-thickness:2px}
+.brand small{color:var(--muted);font-size:13px}
+.toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);cursor:pointer;user-select:none;background:none;border:0;padding:4px;font-family:inherit}
+.sw{width:34px;height:20px;border-radius:10px;background:var(--line);position:relative;transition:background .15s}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--card);transition:left .15s}
+.toggle[aria-pressed="true"] .sw{background:var(--ink)}
+.toggle[aria-pressed="true"] .sw::after{left:17px}
+.meters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:14px}
+.m{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+.m .l{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.m .v{font-size:17px;font-weight:500}
+.bar{height:6px;background:var(--line);border-radius:3px;margin-top:7px;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:3px;transition:width .4s,background .4s}
+.m .s{font-size:12px;margin-top:3px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-bottom:12px}
+.eyebrow{font-size:12px;color:var(--muted);letter-spacing:.02em;margin-bottom:6px;display:flex;justify-content:space-between;gap:8px}
+.clause{font-family:"Source Serif 4",serif;font-size:16.5px;line-height:1.7;margin:0}
+del{color:var(--del);background:var(--del-bg);text-decoration-thickness:1.5px}
+ins{color:var(--ins);background:var(--ins-bg);text-decoration:underline;text-underline-offset:3px}
+h2{font-family:"Source Serif 4",serif;font-weight:500;font-size:20px;margin:0 0 4px}
+p{margin:0 0 10px}
+.muted{color:var(--muted)}
+.opts{display:grid;gap:10px}
+.opt{display:block;width:100%;text-align:left;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;cursor:pointer;color:var(--ink);font-family:inherit;font-size:15px;transition:border-color .15s,transform .1s}
+.opt:hover{border-color:var(--muted)}
+.opt:active{transform:scale(.99)}
+.opt b{font-weight:500;display:block;margin-bottom:2px}
+.opt .d{font-size:14px;color:var(--muted)}
+.opt .tag{float:right;font-size:11px;padding:2px 8px;border-radius:10px;background:var(--chip);color:var(--muted);margin-left:8px}
+.opt[disabled]{opacity:.45;cursor:not-allowed}
+.who{display:flex;gap:10px;align-items:flex-start;margin-bottom:12px}
+.av{width:38px;height:38px;flex-shrink:0;border-radius:50%;background:var(--del-bg);color:var(--del);display:flex;align-items:center;justify-content:center;font-weight:500;font-size:13px}
+.av.you{background:var(--ins-bg);color:var(--ins)}
+.bubble{background:var(--bubble);border-radius:12px;padding:10px 12px;flex:1;min-width:0}
+.bubble .n{font-size:12px;color:var(--muted);margin-bottom:3px}
+.hint{border:1px dashed var(--line);border-radius:10px;padding:8px 12px;font-size:14px;color:var(--muted);margin-bottom:12px;font-style:italic}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:var(--ink);color:var(--paper);border:0;border-radius:10px;padding:11px 18px;font-family:inherit;font-size:15px;font-weight:500;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap;margin-top:6px}
+.walk{background:none;border:0;color:var(--muted);font-family:inherit;font-size:13px;text-decoration:underline;cursor:pointer;padding:6px 0;margin-top:4px}
+.res{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:14px;padding:10px 0;border-top:1px solid var(--line)}
+.res:first-child{border-top:0}
+.pill{font-size:12px;padding:2px 9px;border-radius:10px;white-space:nowrap}
+.lo{background:color-mix(in srgb,var(--good) 18%,transparent);color:var(--good)}
+.mid{background:color-mix(in srgb,var(--warn) 18%,transparent);color:var(--warn)}
+.hi{background:color-mix(in srgb,var(--bad) 18%,transparent);color:var(--bad)}
+.score{font-family:"Source Serif 4",serif;font-size:56px;font-weight:500;line-height:1;margin:6px 0}
+details{border-top:1px solid var(--line);padding:10px 0}
+details summary{cursor:pointer;font-weight:500;font-size:15px;list-style:none;display:flex;justify-content:space-between;gap:10px}
+details summary::-webkit-details-marker{display:none}
+details .clause{font-size:15px;margin:8px 0}
+.lesson{font-size:14px;color:var(--muted);margin:0}
+.toast{font-size:13px;color:var(--good);margin-left:8px}
+.fade{animation:f .25s ease}
+@keyframes f{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (max-width:520px){
+  .meters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .brand small{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="brand"><h1><span>Redline</span> Duel</h1><small>A negotiation game</small></div>
+    <button class="toggle" id="hintToggle" aria-pressed="false" title="Show a hint on each clause"><span>Hint</span><span class="sw" aria-hidden="true"></span></button>
+  </header>
+  <div id="meters"></div>
+  <main id="app"></main>
+</div>
+
+<script>
+const COUNSEL = "Victoria Kane";
+const CLAUSES = [
+{
+  title:"Liability cap", ref:"9.1 Limitation of liability",
+  original:`Each party's total aggregate liability arising out of or in connection with this Agreement shall not exceed the fees paid by Customer in the three (3) months preceding the event giving rise to the claim.`,
+  origRisk:9,
+  hint:`A vendor's appetite for liability rarely exceeds what someone else will pay for it.`,
+  lesson:`Market practice in SaaS is around twelve months' fees, with carve-outs or a super-cap for data and confidentiality. A super-cap that tracks the vendor's insurance is far easier to win than "uncapped".`,
+  openings:[
+    {stance:"Aggressive", label:"Uncap the supplier", desc:"Strike the cap entirely for Northwind.", cost:25,
+     redline:`<del>Each party's total aggregate liability arising out of or in connection with this Agreement shall not exceed the fees paid by Customer in the three (3) months preceding the event giving rise to the claim.</del> <ins>Supplier's liability under this Agreement shall be unlimited.</ins>`,
+     reply:`Uncapped? No vendor on earth signs that, and you know it. I'll move to six months. Consider that generous.`,
+     counter:`Each party's total aggregate liability shall not exceed the fees paid by Customer in the six (6) months preceding the event giving rise to the claim.`, counterRisk:7,
+     push:{label:"Re-anchor: twelve months, plus a separate cap for data breaches",
+       ok:{reply:`Twelve months, and a $1M super-cap for data protection breaches. That's where our cyber cover tops out. Done.`, text:`Each party's total aggregate liability shall not exceed the fees paid or payable in the twelve (12) months preceding the claim, save that Supplier's liability for breach of data protection obligations shall not exceed $1,000,000.`, risk:3},
+       fail:{reply:`You opened at "unlimited" and now want me to meet you in the middle? Six months stands.`, text:`Each party's total aggregate liability shall not exceed the fees paid by Customer in the six (6) months preceding the event giving rise to the claim.`, risk:7}}},
+    {stance:"Balanced", label:"Twelve months, with carve-outs", desc:"Market cap, with uncapped confidentiality, data and IP indemnity.", cost:10,
+     redline:`Each party's total aggregate liability arising out of or in connection with this Agreement shall not exceed the fees paid <del>by Customer in the three (3) months</del> <ins>or payable in the twelve (12) months</ins> preceding the event giving rise to the claim<ins>, save that liability for breach of confidentiality, data protection obligations or the IP indemnity shall be unlimited</ins>.`,
+     reply:`Twelve months I can live with. Uncapped data breach liability, no. Our insurer won't let us. I can offer a $500K super-cap for data protection.`,
+     counter:`Liability capped at twelve (12) months' fees; confidentiality and IP indemnity uncapped; data protection liability subject to a super-cap of $500,000.`, counterRisk:4,
+     push:{label:"Argue the super-cap should match their insurance limit",
+       ok:{reply:`...Fair. Our cyber policy is $1M, so the super-cap is $1M. You did your homework.`, text:`Liability capped at twelve (12) months' fees; confidentiality and IP indemnity uncapped; data protection liability subject to a super-cap of $1,000,000.`, risk:2},
+       fail:{reply:`I've already moved twice on this clause. $500K is final.`, text:`Liability capped at twelve (12) months' fees; confidentiality and IP indemnity uncapped; data protection liability subject to a super-cap of $500,000.`, risk:4}}},
+    {stance:"Soft", label:"Nudge to six months", desc:"Ask for a modest increase and move on.", cost:0,
+     redline:`...shall not exceed the fees paid by Customer in the <del>three (3)</del> <ins>six (6)</ins> months preceding the event giving rise to the claim.`,
+     reply:`Six months. Agreed. Happy to move on.`,
+     counter:`Each party's total aggregate liability shall not exceed the fees paid by Customer in the six (6) months preceding the event giving rise to the claim.`, counterRisk:6,
+     push:{label:"Add a carve-out for breach of confidentiality",
+       ok:{reply:`Confidentiality outside the cap is reasonable. Fine.`, text:`Liability capped at six (6) months' fees, save that liability for breach of confidentiality shall be unlimited.`, risk:5},
+       fail:{reply:`We just agreed this. Let's not reopen it.`, text:`Each party's total aggregate liability shall not exceed the fees paid by Customer in the six (6) months preceding the event giving rise to the claim.`, risk:6}}}
+  ]
+},
+{
+  title:"Indemnification", ref:"10.1 Indemnities",
+  original:`Customer shall indemnify, defend and hold harmless Supplier and its affiliates from and against any and all claims, losses and expenses arising out of or relating to Customer's use of the Services.`,
+  origRisk:9,
+  hint:`Not every exclusion is worth fighting over. Some of them are simply fair.`,
+  lesson:`Mutual indemnities and a vendor IP-infringement indemnity are standard. Exclusions for your own data and modifications are reasonable, and spending capital fighting them buys very little.`,
+  openings:[
+    {stance:"Aggressive", label:"Flip it and widen it", desc:"Mutual, plus supplier covers IP, data breach and negligence, uncapped.", cost:20,
+     redline:`<del>Customer shall indemnify, defend and hold harmless Supplier and its affiliates from and against any and all claims, losses and expenses arising out of or relating to Customer's use of the Services.</del> <ins>Each party shall indemnify the other against third-party claims arising from its breach of this Agreement. Supplier shall further indemnify Customer, without limit, against claims arising from IP infringement, data breach or Supplier's negligence.</ins>`,
+     reply:`Mutual is fine. An IP indemnity, yes. Data breach and negligence go under the liability cap you just negotiated, not around it.`,
+     counter:`Mutual indemnity for breach; Supplier indemnifies Customer for third-party IP infringement claims, subject to the liability cap.`, counterRisk:4,
+     push:{label:"Argue third-party IP claims must sit outside the cap",
+       ok:{reply:`I'll concede that. You can't control a patent troll any more than we can. IP indemnity sits outside the cap.`, text:`Mutual indemnity for breach; Supplier indemnifies Customer for third-party IP infringement claims, outside the liability cap.`, risk:2},
+       fail:{reply:`Everything sits under the cap. I won't move on this today.`, text:`Mutual indemnity for breach; Supplier indemnifies Customer for third-party IP infringement claims, subject to the liability cap.`, risk:5}}},
+    {stance:"Balanced", label:"Add IP cover, narrow yours", desc:"Supplier IP indemnity; your indemnity only for breach of law or the AUP.", cost:10,
+     redline:`Customer shall indemnify, defend and hold harmless Supplier <del>and its affiliates from and against any and all claims, losses and expenses arising out of or relating to Customer's use of the Services</del><ins>against third-party claims arising from Customer's breach of applicable law or the Acceptable Use Policy. Supplier shall indemnify Customer against third-party claims that the Services infringe any intellectual property right</ins>.`,
+     reply:`Fair. One condition: the IP indemnity excludes claims caused by your data, your modifications, or combinations we didn't supply.`,
+     counter:`Customer indemnity limited to breach of law or AUP; Supplier IP indemnity, excluding claims caused by Customer data, modifications or third-party combinations.`, counterRisk:3,
+     push:{label:"Insist the IP indemnity has no exclusions",
+       ok:{reply:`Fine, no exclusions. But then you indemnify us for anything your data infringes. Net effect: nothing changes, and you've spent goodwill.`, text:`Customer indemnity for breach of law, AUP and Customer data; Supplier IP indemnity without exclusions.`, risk:3},
+       fail:{reply:`Those exclusions are in every SaaS contract you've ever read. No.`, text:`Customer indemnity limited to breach of law or AUP; Supplier IP indemnity, excluding claims caused by Customer data, modifications or third-party combinations.`, risk:3}}},
+    {stance:"Soft", label:"Just narrow your indemnity", desc:"Limit your indemnity to claims you actually cause.", cost:5,
+     redline:`...from and against any and all claims, losses and expenses <ins>to the extent</ins> arising out of <del>or relating to Customer's use of the Services</del><ins>Customer's breach of this Agreement</ins>.`,
+     reply:`Accepted. That's a reasonable ask.`,
+     counter:`Customer indemnifies Supplier only to the extent claims arise from Customer's breach of this Agreement. No supplier indemnity.`, counterRisk:6,
+     push:{label:"Ask for a supplier IP indemnity as well",
+       ok:{reply:`I'd have offered that if you'd asked earlier. IP indemnity added.`, text:`Customer indemnity limited to its breach; Supplier indemnifies Customer for third-party IP infringement claims.`, risk:3},
+       fail:{reply:`You've had your change on this clause. Moving on.`, text:`Customer indemnifies Supplier only to the extent claims arise from Customer's breach of this Agreement. No supplier indemnity.`, risk:6}}}
+  ]
+},
+{
+  title:"Termination", ref:"14.2 Termination",
+  original:`Supplier may terminate this Agreement for convenience on thirty (30) days' written notice. Customer may terminate this Agreement only for Supplier's material breach that remains uncured for sixty (60) days after notice.`,
+  origRisk:8,
+  hint:`Think about what an early exit would cost her, and what it would cost you to leave.`,
+  lesson:`A vendor's right to terminate for convenience guts your continuity. Transition assistance is often cheaper for the vendor to give than a longer notice period, and it is worth more to you.`,
+  openings:[
+    {stance:"Aggressive", label:"Their right out, yours in", desc:"Delete supplier convenience exit; give Customer a free 30-day exit.", cost:25,
+     redline:`<del>Supplier may terminate this Agreement for convenience on thirty (30) days' written notice.</del> Customer may terminate this Agreement <del>only for Supplier's material breach that remains uncured for sixty (60) days after notice</del><ins>for convenience on thirty (30) days' written notice without penalty</ins>.`,
+     reply:`You want to walk out whenever you like while we hold the risk? With a volume commitment on the table? No. I'll drop our convenience right. You can terminate on 90 days, but you pay the remaining committed fees.`,
+     counter:`No supplier convenience termination. Customer may terminate for convenience on ninety (90) days' notice on payment of remaining committed fees.`, counterRisk:4,
+     push:{label:"Ask for 90 days of free transition assistance and data export",
+       ok:{reply:`Transition help we can do. Ninety days, at no extra charge, with your data exported in a standard format.`, text:`No supplier convenience termination. Customer may terminate on ninety (90) days' notice on payment of remaining committed fees; Supplier provides ninety (90) days' transition assistance and data export at no cost.`, risk:2},
+       fail:{reply:`I've given you more than enough on this clause.`, text:`No supplier convenience termination. Customer may terminate for convenience on ninety (90) days' notice on payment of remaining committed fees.`, risk:4}}},
+    {stance:"Balanced", label:"Remove theirs, add a measured exit", desc:"Delete supplier convenience exit; Customer exit on 90 days, plus transition help.", cost:15,
+     redline:`<del>Supplier may terminate this Agreement for convenience on thirty (30) days' written notice.</del> Customer may terminate this Agreement <del>only</del> for Supplier's material breach that remains uncured for <del>sixty (60)</del><ins>thirty (30)</ins> days after notice<ins>, or for convenience on ninety (90) days' notice. On any termination Supplier shall provide reasonable transition assistance</ins>.`,
+     reply:`Deleting ours is fine. Your convenience exit only applies after the first contract year. We have onboarding costs to recover.`,
+     counter:`No supplier convenience termination. Customer may terminate for convenience on ninety (90) days' notice after year one; transition assistance on any termination.`, counterRisk:3,
+     push:{label:"Ask for sixty days' notice instead of ninety",
+       ok:{reply:`Sixty days after year one. Fine.`, text:`No supplier convenience termination. Customer may terminate for convenience on sixty (60) days' notice after year one; transition assistance on any termination.`, risk:2},
+       fail:{reply:`Ninety. I need a full quarter to reallocate capacity.`, text:`No supplier convenience termination. Customer may terminate for convenience on ninety (90) days' notice after year one; transition assistance on any termination.`, risk:3}}},
+    {stance:"Soft", label:"Lengthen their notice", desc:"Keep their convenience right, but at 180 days' notice.", cost:5,
+     redline:`Supplier may terminate this Agreement for convenience on <del>thirty (30)</del><ins>one hundred and eighty (180)</ins> days' written notice. Customer may terminate...`,
+     reply:`Done. A hundred and eighty days.`,
+     counter:`Supplier may terminate for convenience on one hundred and eighty (180) days' notice. Customer may terminate only for uncured material breach.`, counterRisk:6,
+     push:{label:"Add transition assistance if they exercise it",
+       ok:{reply:`Reasonable. If we terminate, we help you move.`, text:`Supplier may terminate for convenience on 180 days' notice, with transition assistance at no cost. Customer may terminate only for uncured material breach.`, risk:5},
+       fail:{reply:`Let's keep this clause as agreed.`, text:`Supplier may terminate for convenience on one hundred and eighty (180) days' notice. Customer may terminate only for uncured material breach.`, risk:6}}}
+  ]
+},
+{
+  title:"Renewal", ref:"2.2 Renewal",
+  original:`This Agreement shall automatically renew for successive three (3) year terms unless either party gives notice of non-renewal at least one hundred and eighty (180) days before expiry. Fees for each renewal term shall be at Supplier's then-current list price.`,
+  origRisk:8,
+  hint:`The cheapest protection here might be something that simply reminds you.`,
+  lesson:`Auto-renewal traps are about the notice window and the price. A renewal-reminder obligation costs the vendor almost nothing and protects you a great deal.`,
+  openings:[
+    {stance:"Aggressive", label:"Kill auto-renewal", desc:"Renewal only by mutual written agreement.", cost:15,
+     redline:`This Agreement shall <del>automatically renew for successive three (3) year terms unless either party gives notice of non-renewal at least one hundred and eighty (180) days before expiry</del><ins>renew only by mutual written agreement</ins>. <del>Fees for each renewal term shall be at Supplier's then-current list price.</del>`,
+     reply:`Without auto-renewal my revenue forecasting is guesswork. One-year auto-renewals, ninety days' notice, and price increases capped at seven percent.`,
+     counter:`Auto-renews for one-year terms unless notice is given ninety (90) days before expiry; renewal price increase capped at 7%.`, counterRisk:4,
+     push:{label:"Cap increases at CPI or 3%, whichever is lower",
+       ok:{reply:`CPI or three percent, lower of the two. You drive a hard bargain.`, text:`Auto-renews for one-year terms unless notice is given ninety (90) days before expiry; renewal price increase capped at the lower of CPI and 3%.`, risk:2},
+       fail:{reply:`Seven percent is already below what our other customers pay.`, text:`Auto-renews for one-year terms unless notice is given ninety (90) days before expiry; renewal price increase capped at 7%.`, risk:4}}},
+    {stance:"Balanced", label:"Shorter terms, capped price", desc:"One-year renewals, 60 days' notice, increases capped at 3%.", cost:10,
+     redline:`This Agreement shall automatically renew for successive <del>three (3) year</del><ins>one (1) year</ins> terms unless either party gives notice of non-renewal at least <del>one hundred and eighty (180)</del><ins>sixty (60)</ins> days before expiry. Fees for each renewal term shall <del>be at Supplier's then-current list price</del><ins>not increase by more than 3%</ins>.`,
+     reply:`One-year terms, fine. I need ninety days' notice, and the cap is five percent.`,
+     counter:`Auto-renews for one-year terms; ninety (90) days' notice of non-renewal; renewal price increase capped at 5%.`, counterRisk:3,
+     push:{label:"Require them to send a renewal reminder 30 days before the notice deadline",
+       ok:{reply:`A reminder? That costs us nothing. Agreed.`, text:`Auto-renews for one-year terms; ninety (90) days' notice; price increase capped at 5%; Supplier to send written renewal reminder thirty (30) days before the notice deadline.`, risk:2},
+       fail:{reply:`Diarise it yourself. Your calendar isn't my job.`, text:`Auto-renews for one-year terms; ninety (90) days' notice of non-renewal; renewal price increase capped at 5%.`, risk:3}}},
+    {stance:"Soft", label:"Shorten the notice window", desc:"Ninety days' notice instead of 180.", cost:0,
+     redline:`...unless either party gives notice of non-renewal at least <del>one hundred and eighty (180)</del><ins>ninety (90)</ins> days before expiry...`,
+     reply:`Agreed. Ninety days.`,
+     counter:`Auto-renews for three-year terms unless notice is given ninety (90) days before expiry; renewal fees at Supplier's then-current list price.`, counterRisk:6,
+     push:{label:"Cap renewal price increases at 5%",
+       ok:{reply:`Five percent cap. Fine.`, text:`Auto-renews for three-year terms; ninety (90) days' notice; renewal price increase capped at 5%.`, risk:4},
+       fail:{reply:`Pricing is not on the table this round.`, text:`Auto-renews for three-year terms unless notice is given ninety (90) days before expiry; renewal fees at Supplier's then-current list price.`, risk:6}}}
+  ]
+},
+{
+  title:"Suspension", ref:"6.4 Suspension for government action",
+  original:`Supplier may suspend the Services, in whole or in part, immediately and without liability if any law, regulation, sanction, export control or order of any governmental authority restricts or, in Supplier's reasonable opinion, may restrict the provision of the Services.`,
+  origRisk:9,
+  hint:`No contract overrides a regulator. But a contract can decide who pays when one acts.`,
+  lesson:`You can't contract around a regulator, but you can allocate the consequences: an objective trigger, notice, limits on scope, fee abatement, and an exit if the suspension drags on.`,
+  openings:[
+    {stance:"Aggressive", label:"Delete the clause", desc:"No suspension right at all.", cost:20,
+     redline:`<del>Supplier may suspend the Services, in whole or in part, immediately and without liability if any law, regulation, sanction, export control or order of any governmental authority restricts or, in Supplier's reasonable opinion, may restrict the provision of the Services.</del>`,
+     reply:`Delete it? If a regulator orders us to stop, we stop. No contract changes that. I'll limit it to actual legal restrictions, not our opinion.`,
+     counter:`Supplier may suspend the Services to the extent required by applicable law, sanction, export control or governmental order.`, counterRisk:6,
+     push:{label:"Require notice, fee abatement, and an exit after 30 days",
+       ok:{reply:`Notice where lawful, no fees while suspended, and you can terminate after thirty days. Reasonable.`, text:`Supplier may suspend only to the extent required by law or governmental order, with prior notice where lawful; fees abate during suspension; Customer may terminate if suspension exceeds thirty (30) days.`, risk:2},
+       fail:{reply:`You tried to delete the clause. I'm not dressing up my concession now.`, text:`Supplier may suspend the Services to the extent required by applicable law, sanction, export control or governmental order.`, risk:6}}},
+    {stance:"Balanced", label:"Objective trigger, shared consequences", desc:"Only where legally required; notice, scope limits, fee abatement, exit after 30 days.", cost:15,
+     redline:`Supplier may suspend the Services, <del>in whole or in part, immediately and without liability if</del><ins>only to the extent and for so long as</ins> any law, regulation, sanction, export control or order of any governmental authority <del>restricts or, in Supplier's reasonable opinion, may restrict</del><ins>prohibits</ins> the provision of the Services<ins>, on prior written notice where lawful. Fees shall abate during any suspension, and Customer may terminate if suspension exceeds thirty (30) days, with a pro-rata refund</ins>.`,
+     reply:`Mostly fine. Make it sixty days before you can terminate. These orders often get lifted within weeks.`,
+     counter:`Objective legal trigger; notice where lawful; limited to affected Services; fees abate; Customer may terminate if suspension exceeds sixty (60) days, with a pro-rata refund.`, counterRisk:3,
+     push:{label:"Add a data-export window during any suspension",
+       ok:{reply:`Read-only export access during suspension, where the law allows. Agreed.`, text:`Objective legal trigger; notice where lawful; limited to affected Services; fees abate; read-only data export during suspension where lawful; Customer may terminate after sixty (60) days with pro-rata refund.`, risk:2},
+       fail:{reply:`If we're ordered to stop, we stop everything. No export window.`, text:`Objective legal trigger; notice where lawful; limited to affected Services; fees abate; Customer may terminate if suspension exceeds sixty (60) days, with a pro-rata refund.`, risk:3}}},
+    {stance:"Soft", label:"Ask for notice", desc:"Keep the right; require prior notice.", cost:5,
+     redline:`Supplier may suspend the Services, in whole or in part, <del>immediately</del><ins>on prior written notice where lawful</ins> and without liability if...`,
+     reply:`Notice where lawful. Fine.`,
+     counter:`Supplier may suspend on notice where lawful, without liability, if law or governmental order restricts, or in Supplier's reasonable opinion may restrict, the Services.`, counterRisk:7,
+     push:{label:"Add fee abatement during suspension",
+       ok:{reply:`You shouldn't pay for what you can't use. Fees abate.`, text:`Supplier may suspend on notice where lawful if law or governmental order restricts, or may restrict, the Services; fees abate during suspension.`, risk:5},
+       fail:{reply:`We bear enough cost when that happens. No abatement.`, text:`Supplier may suspend on notice where lawful, without liability, if law or governmental order restricts, or in Supplier's reasonable opinion may restrict, the Services.`, risk:7}}}
+  ]
+},
+{
+  title:"Volume commitment", ref:"5.1 Committed spend",
+  original:`Customer commits to a minimum annual spend of $1,500,000 (the "Committed Spend"). Any shortfall against the Committed Spend shall be invoiced at the end of each contract year and is non-refundable.`,
+  origRisk:8, origSpend:1500000,
+  hint:`Clauses don't live alone. Something you agreed earlier may make this one easier.`,
+  lesson:`A commitment should flex when the vendor can't deliver. Linking the volume commitment to suspension events is a classic cross-clause trade.`,
+  openings:[
+    {stance:"Aggressive", label:"No commitment", desc:"Pay as you go.", cost:25,
+     redline:`<del>Customer commits to a minimum annual spend of $1,500,000 (the "Committed Spend"). Any shortfall against the Committed Spend shall be invoiced at the end of each contract year and is non-refundable.</del> <ins>Customer shall pay for Services as consumed.</ins>`,
+     reply:`Then your thirty percent discount disappears too. List price, pay as you go. Your CFO will love that.`,
+     counter:`No commitment; Services charged at list price as consumed (no volume discount).`, counterRisk:5, counterSpend:0,
+     push:{label:"Offer a $900K commitment if the discount stays",
+       ok:{reply:`Nine hundred thousand with the discount intact. I can sell that internally.`, text:`Committed Spend of $900,000 per year at the discounted rate; shortfall invoiced annually.`, risk:3, spend:900000},
+       fail:{reply:`You walked away from the commitment. The discount went with it.`, text:`No commitment; Services charged at list price as consumed (no volume discount).`, risk:5, spend:0}}},
+    {stance:"Balanced", label:"Lower it, roll it over", desc:"$1M commitment; shortfall becomes a 12-month credit.", cost:10,
+     redline:`Customer commits to a minimum annual spend of <del>$1,500,000</del><ins>$1,000,000</ins> (the "Committed Spend"). Any shortfall against the Committed Spend shall be <del>invoiced at the end of each contract year and is non-refundable</del><ins>carried forward as a usage credit for twelve (12) months</ins>.`,
+     reply:`$1.2 million, and the shortfall rolls over for six months.`,
+     counter:`Committed Spend of $1,200,000; shortfall carried forward as credit for six (6) months.`, counterRisk:3, counterSpend:1200000,
+     push:{label:"Reduce the commitment pro rata for any suspension under clause 6.4",
+       ok:{reply:`...If we can't deliver, you shouldn't pay for it. That's fair. Pro-rata reduction for suspension periods.`, text:`Committed Spend of $1,200,000, reduced pro rata for any period of suspension under clause 6.4; shortfall carried forward as credit for six (6) months.`, risk:2, spend:1200000},
+       fail:{reply:`Let's not tangle the commitment with other clauses.`, text:`Committed Spend of $1,200,000; shortfall carried forward as credit for six (6) months.`, risk:3, spend:1200000}}},
+    {stance:"Soft", label:"Rollover only", desc:"Keep $1.5M; shortfall carries forward.", cost:5,
+     redline:`...Any shortfall against the Committed Spend shall be <del>invoiced at the end of each contract year and is non-refundable</del><ins>carried forward to the following contract year</ins>.`,
+     reply:`Rollover for three months. That's all I can do.`,
+     counter:`Committed Spend of $1,500,000; shortfall carried forward as credit for three (3) months.`, counterRisk:6, counterSpend:1500000,
+     push:{label:"Ask to lower the commitment to $1.2M",
+       ok:{reply:`$1.2 million it is.`, text:`Committed Spend of $1,200,000; shortfall carried forward as credit for three (3) months.`, risk:4, spend:1200000},
+       fail:{reply:`The number was set by my board. It stays.`, text:`Committed Spend of $1,500,000; shortfall carried forward as credit for three (3) months.`, risk:6, spend:1500000}}}
+  ]
+}
+];
+
+const PUSH_THRESHOLD = 50;
+let S;
+function reset(){
+  S = {stage:"intro", i:0, patience:100, chips:0, spend:1500000, results:[], pick:null, outcome:null, hints:S?S.hints:false};
+}
+reset();
+try{ S.hints = localStorage.getItem("rd-hints")==="1"; }catch(e){}
+
+const $ = id => document.getElementById(id);
+const fmt = n => n===0 ? "$0" : "$" + (n>=1e6 ? (Math.round(n/1e5)/10)+"M" : Math.round(n/1e3)+"K");
+const riskClass = r => r<=3 ? "lo" : r<=5 ? "mid" : "hi";
+const riskWord = r => r<=3 ? "Low" : r<=5 ? "Moderate" : "High";
+
+function currentRisk(){
+  const rs = S.results.map(r=>r.risk);
+  const pending = CLAUSES.slice(S.results.length).map(c=>c.origRisk);
+  const all = rs.concat(pending);
+  return all.reduce((a,b)=>a+b,0)/all.length;
+}
+
+function meters(){
+  const risk = currentRisk();
+  const rPct = Math.round(risk*10);
+  const rCol = risk<=3?"var(--good)":risk<=5.5?"var(--warn)":"var(--bad)";
+  const p = Math.max(0,S.patience);
+  const pCol = p>=60?"var(--good)":p>=PUSH_THRESHOLD?"var(--warn)":"var(--bad)";
+  const pWord = p>=75?"Calm":p>=PUSH_THRESHOLD?"Guarded":p>=25?"Irritated":"About to walk";
+  const done = Math.min(S.results.length + (S.stage==="intro"?0:0), 6);
+  $("meters").innerHTML = S.stage==="intro" ? "" : `
+  <div class="meters">
+    <div class="m"><div class="l">Clause</div><div class="v">${Math.min(S.i+1,6)} of 6</div><div class="s muted">${done} closed</div></div>
+    <div class="m"><div class="l">Your risk</div><div class="bar"><i style="width:${rPct}%;background:${rCol}"></i></div><div class="s" style="color:${rCol}">${riskWord(risk)}</div></div>
+    <div class="m"><div class="l">Her patience</div><div class="bar"><i style="width:${p}%;background:${pCol}"></i></div><div class="s" style="color:${pCol}">${pWord}</div></div>
+    <div class="m"><div class="l">Goodwill banked</div><div class="v">${S.chips}</div><div class="s muted">Commit ${fmt(S.spend)}</div></div>
+  </div>`;
+}
+
+function hintBox(text){ return S.hints ? `<div class="hint">${text}</div>` : ""; }
+
+function kane(text){
+  return `<div class="who fade"><div class="av">VK</div><div class="bubble"><div class="n">${COUNSEL}, Northwind Cloud</div>${text}</div></div>`;
+}
+
+function render(){
+  meters();
+  const app = $("app");
+  const c = CLAUSES[S.i];
+  if(S.stage==="intro"){
+    app.innerHTML = `
+    <div class="card fade">
+      <h2>The brief</h2>
+      <p>You are counsel for <b>Halcyon Logistics</b>, which is buying an AI route-optimisation platform from <b>Northwind Cloud</b>. The deal is worth about $1.5M a year.</p>
+      <p>Northwind's paper is one-sided. Across the table sits <b>${COUNSEL}</b>, Northwind's general counsel: sharp, fair when she's treated fairly, and short of patience.</p>
+      <p>You will redline six clauses. On each one, pick an opening move, read her reply, then decide whether to accept, push back, or concede the point to bank goodwill. Banked goodwill can be called in later to win a push-back.</p>
+      <p class="muted" style="font-size:14px">Win by lowering your risk without draining her patience. If her patience runs out, she walks away and the deal dies.</p>
+      <div class="row"><button class="btn" id="start">Open the draft</button></div>
+    </div>`;
+    $("start").onclick = ()=>{S.stage="open"; render();};
+    return;
+  }
+  if(S.stage==="open"){
+    app.innerHTML = `
+    <div class="card fade">
+      <div class="eyebrow"><span>${c.ref}</span><span>Northwind draft</span></div>
+      <p class="clause">${c.original}</p>
+    </div>
+    ${hintBox(c.hint)}
+    <p class="muted" style="font-size:14px;margin:4px 0 10px">Choose your opening redline</p>
+    <div class="opts">${c.openings.map((o,k)=>`
+      <button class="opt" data-k="${k}"><span class="tag">${o.stance}</span><b>${o.label}</b><span class="d">${o.desc}</span></button>`).join("")}
+    </div>`;
+    app.querySelectorAll(".opt").forEach(b=>b.onclick=()=>{
+      const o = c.openings[+b.dataset.k];
+      S.pick = o; S.patience -= o.cost; S.stage="respond";
+      if(S.patience<=0){S.stage="walkout";}
+      render(); window.scrollTo({top:0,behavior:"smooth"});
+    });
+    return;
+  }
+  if(S.stage==="respond"){
+    const o = S.pick;
+    const canPush = S.patience >= PUSH_THRESHOLD;
+    app.innerHTML = `
+    <div class="card fade">
+      <div class="eyebrow"><span>${c.ref}</span><span>Your redline</span></div>
+      <p class="clause">${o.redline}</p>
+    </div>
+    ${kane(o.reply)}
+    <div class="card fade">
+      <div class="eyebrow"><span>Her counter</span><span class="pill ${riskClass(o.counterRisk)}">${riskWord(o.counterRisk)} risk</span></div>
+      <p class="clause">${o.counter}</p>
+    </div>
+    <p class="muted" style="font-size:14px;margin:4px 0 10px">Your move</p>
+    <div class="opts">
+      <button class="opt" id="acc"><b>Accept her counter</b><span class="d">Close the clause on her terms. She appreciates it.</span></button>
+      <button class="opt" id="push"><b>Push back</b><span class="d">${o.push.label}</span></button>
+      ${S.chips>0?`<button class="opt" id="favour"><span class="tag">Goodwill ${S.chips}</span><b>Call in a favour</b><span class="d">Spend banked goodwill: "${o.push.label}"</span></button>`:""}
+      <button class="opt" id="con"><b>Concede the point</b><span class="d">Accept Northwind's original wording and bank goodwill for later.</span></button>
+    </div>
+    <button class="walk" id="walk">Walk away from the deal</button>`;
+    $("acc").onclick = ()=>finish({reply:`Good. Next clause.`, text:o.counter, risk:o.counterRisk, spend:o.counterSpend, how:"Accepted counter"}, +5);
+    $("push").onclick = ()=>{
+      if(canPush) finish(Object.assign({how:"Pushed back and won"}, o.push.ok), -10);
+      else finish(Object.assign({how:"Pushed back and lost"}, o.push.fail), -15);
+    };
+    if($("favour")) $("favour").onclick = ()=>{ S.chips--; finish(Object.assign({how:"Called in a favour"}, o.push.ok, {reply:`You gave me ground earlier, so I'll give you this. ` + o.push.ok.reply}), 0); };
+    $("con").onclick = ()=>{ S.chips++; finish({reply:`That's gracious. I'll remember it.`, text:c.original, risk:c.origRisk, spend:c.origSpend, how:"Conceded, goodwill banked"}, +15); };
+    $("walk").onclick = ()=>{ if(confirm("Walk away from the whole deal?")){ S.stage="walked"; render(); } };
+    return;
+  }
+  if(S.stage==="result"){
+    const r = S.outcome;
+    const last = S.i===CLAUSES.length-1;
+    app.innerHTML = `
+    ${kane(r.reply)}
+    <div class="card fade">
+      <div class="eyebrow"><span>${c.ref}, agreed wording</span><span class="pill ${riskClass(r.risk)}">${riskWord(r.risk)} risk</span></div>
+      <p class="clause">${r.text}</p>
+    </div>
+    <div class="row"><button class="btn" id="next">${last?"Sign and see your debrief":"Next clause"}</button></div>`;
+    $("next").onclick = ()=>{
+      if(last){S.stage="end";} else {S.i++; S.stage="open";}
+      render(); window.scrollTo({top:0,behavior:"smooth"});
+    };
+    return;
+  }
+  if(S.stage==="walkout" || S.stage==="walked"){
+    const theyWalked = S.stage==="walkout";
+    app.innerHTML = `
+    <div class="card fade">
+      <h2>${theyWalked?"She walked out":"You walked away"}</h2>
+      ${theyWalked ? kane(`I've been patient, but I can't spend my week defending basic commercial terms. We'll pass on this one.`) : ""}
+      <p>${theyWalked
+        ? `Her patience ran out on <b>${CLAUSES[S.i].title.toLowerCase()}</b>. Every aggressive anchor and every lost push-back costs goodwill, and a deal with perfect terms is worth nothing if it never gets signed.`
+        : `You walked away from a $1.5M deal. Walking is right only when your best alternative (your BATNA) beats what's on the table. Did yours?`}</p>
+      <p class="muted" style="font-size:14px">Try opening more moderately, accepting reasonable counters, and conceding small points to bank goodwill for the clauses that matter most.</p>
+      <div class="row"><button class="btn" id="again">Try again</button></div>
+    </div>`;
+    $("again").onclick = ()=>{ reset(); try{S.hints = localStorage.getItem("rd-hints")==="1";}catch(e){} syncToggle(); render(); };
+    return;
+  }
+  if(S.stage==="end"){
+    const total = S.results.reduce((a,r)=>a+r.risk,0);
+    const protection = Math.max(0,Math.min(100,Math.round((60-total)/48*100)));
+    const rel = Math.max(0,Math.min(100,S.patience));
+    const score = Math.round(protection*0.8 + rel*0.2);
+    const grade = score>=80?"Rainmaker":score>=65?"Seasoned dealmaker":score>=45?"Solid hand":"Signed under pressure";
+    const share = `I scored ${score}/100 ("${grade}") in Redline Duel, negotiating six clauses against opposing counsel ${COUNSEL}. Can you beat it?`;
+    app.innerHTML = `
+    <div class="card fade" style="text-align:center">
+      <div class="muted" style="font-size:13px">Deal signed</div>
+      <div class="score">${score}</div>
+      <div style="font-weight:500">${grade}</div>
+      <p class="muted" style="font-size:14px;margin-top:8px">Protection ${protection} &middot; Relationship ${rel} &middot; Committed spend ${fmt(S.spend)}</p>
+      <div class="row" style="justify-content:center">
+        <button class="btn ghost" id="copy">Copy score to share</button>
+        <button class="btn" id="again">Play again</button>
+      </div>
+      <span class="toast" id="copied"></span>
+    </div>
+    <div class="card fade">
+      <h2 style="margin-bottom:6px">Debrief</h2>
+      ${S.results.map((r,k)=>`
+      <details>
+        <summary><span>${CLAUSES[k].title}</span><span class="pill ${riskClass(r.risk)}">${riskWord(r.risk)}</span></summary>
+        <div class="muted" style="font-size:13px;margin-top:6px">${r.how}</div>
+        <p class="clause">${r.text}</p>
+        <p class="lesson">${CLAUSES[k].lesson}</p>
+      </details>`).join("")}
+    </div>`;
+    $("again").onclick = ()=>{ reset(); try{S.hints = localStorage.getItem("rd-hints")==="1";}catch(e){} syncToggle(); render(); window.scrollTo({top:0}); };
+    $("copy").onclick = ()=>{
+      const done = ()=>{$("copied").textContent="Copied";};
+      if(navigator.clipboard) navigator.clipboard.writeText(share).then(done,()=>prompt("Copy this:",share));
+      else prompt("Copy this:",share);
+    };
+  }
+}
+
+function finish(outcome, patienceDelta){
+  S.patience = Math.min(100, S.patience + patienceDelta);
+  if(outcome.spend!==undefined) S.spend = outcome.spend;
+  S.outcome = outcome;
+  S.results.push({risk:outcome.risk, text:outcome.text, how:outcome.how});
+  S.stage = S.patience<=0 ? "walkout" : "result";
+  render(); window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function syncToggle(){ $("hintToggle").setAttribute("aria-pressed", S.hints?"true":"false"); }
+$("hintToggle").onclick = ()=>{
+  S.hints = !S.hints; syncToggle();
+  try{ localStorage.setItem("rd-hints", S.hints?"1":"0"); }catch(e){}
+  render();
+};
+syncToggle();
+render();
+</script>
+</body>
+</html>
